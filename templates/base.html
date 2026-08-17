@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Py Blog{% endblock %}</title>
+
+    <!-- 
+    Bootstrap CDN (style-src violation trigger)
+    Phase 0 & 1: loads fine(no enforcement / report-only).
+    Phase 1: console shows violation - style-src 'self' does not cover cdn.jsdelivr.net.
+    Phase 2+: loads fine - cdn.jsdelivr.net is whitelisted in SECURE-CSP style-src
+    -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" integrity="sha256-2FMn2Zx6PuH5tdBQDRNwrOo60ts5wWPC9R8jK67b3t4=" crossorigin="anonymous">
+
+    <style>
+        body {
+            background: #F8F9Fa;
+        }
+        .navbar-brand {
+            font-weight: 700;
+            letter-spacing: .5px;
+        }
+        .comment-body {
+            background: #FFF3CD;
+            border-left: 3px solid #FFC107;
+            padding: .5rem 1rem;
+            border-radius: 4px;
+        }
+        .phase-badge {
+            font-size: .75rem;
+            padding: 2px 10px;
+            border-radius: 12px;
+            background: #0097A7;
+            color: #FFF;
+        }
+        .xss-tip {
+            font-size: .85rem;
+            background: #FFF3CD;
+            border: 1px solid #FFC107;
+            border-radius: 4px;
+            padding: .6rem 1rem;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark mb-4" style="background: #0F2A4A;">
+        <div class="container">
+            <a class="navbar-brand" href="/">Py Blog</a>
+            <div class="d-flex align-items-center gap-3">
+                <!-- Phase badge - driven by {{ csp_phase }} from blog.context_processors.csp_phase. -->
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        {% block content %}{% endblock %}
+    </div>
+
+    <!--
+    Trusted inline script (Phase 3).
+    {{ csp_nonce }} is provided by django.template.context_processors.csp which is registered in TEMPLATES -> context_processors in settings.py.
+    Django 6.0 generates a fresh cryptographic token on every request and places it in:
+    1- The Content-Security-Policy header as 'nonce-<token>'
+    2- The template context as {{ csp_nonce }}
+    This script carries nonce="{{ csp_nonce }}" so the browser allows it to run even though it is inline.
+    An attacker's injected <script> has no nonce -> blocked.
+    Phase 0-1: runs (no enforcement / report-only).
+    Phase 2: BLOCKED - script-src 'self' does not allow inline.
+    Phase 3: runs - nonce matches the header token.
+    -->
+
+    <script nonce="{{ csp_nonce }}">
+        console.log(
+            "Trusted inline script executed - nonce matched",
+            "color:#2E7D32;font-weight:bold;"
+        )
+    </script>
+    
+</body>
+</html>

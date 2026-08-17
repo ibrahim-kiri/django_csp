@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}Home - Py Blog{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Post list -->
+    <div class="col-lg-8">
+        <h2 class="mb-1">Latest Posts</h2>
+        <p class="text-muted mb-4">PyCon Africa 2026 - Kampala.</p>
+
+        {% for post in posts %}
+        <div class="card mb-4 shadow-sm">
+            <div class="card-body">
+                <h2 class="h5 card-title">
+                    <a href="{% url 'post_detail' post.slug %}" class="text-decoration-none text-dark">{{ post.title }}</a>
+                </h2>
+                <p class="text-muted small mb-2">
+                    By {{ post.author }} - {{ post.created_at|date:"N j, Y" }} - {{ post.comments.count }} comment{{ post.comments.count|pluralize }}
+                </p>
+                <p class="card-text">{{ post.body|truncatewords:30 }}</p>
+                <a href="{% url 'post_detail' post.slug %}" class="btn btn-sm btn-outline-primary">Read more >></a>
+            </div>
+        </div>
+        {% empty %}
+        <div class="alert alert-warning">
+            No posts yet. <a href="/admin/">Add +</a>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header fw-bold">CSP Phase Guide</div>
+            <ul class="list-group list-group-flush small">
+                <li class="list-group-item {% if csp_phase == 0 %} fw-bold bg-warning bg-opacity-25 {% endif %}">
+                    <strong>0</strong> - No CSP &nbsp;<span class="text-danger">(XSS fires)</span>
+                </li>
+                <li class="list-group-item {% if csp_phase == 1 %} fw-bold bg-info bg-opacity-25 {% endif %}">
+                    <strong>1</strong> - Report-Only &nbsp;<span class="text-info">(violations logged)</span>
+                </li>
+                <li class="list-group-item {% if csp_phase == 2 %} fw-bold bg-success bg-opacity-25 {% endif %}">
+                    <strong>2</strong> - Enforce &nbsp;<span class="text-success">(browser blocks)</span>
+                </li>
+                <li class="list-group-item {% if csp_phase == 3 %} fw-bold bg-primary bg-opacity-25 {% endif %}">
+                    <strong>3</strong> - Nonces &nbsp;<span class="text-primary">(trusted inline scripts)</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}
