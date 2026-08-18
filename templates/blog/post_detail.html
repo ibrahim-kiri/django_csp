@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}{{ post.title }} - Py Blog{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8">
+        <article class="mb-5">
+            <h2 class="mb-1">{{ post.title }}</h2>
+            <p class="text-muted small mb-4">
+                By {{ post.author }} - {{ post.created_at|date:"N j, Y" }}
+            </p>
+            {{ post.body|linebreaks }}
+        </article>
+
+        <hr class="mb-4">
+
+        <!-- Comments -->
+        <section id="comments" class="mb-5">
+            <h5 class="mb-3">{{ comments.count }} Comment{{ comments.count|pluralize }}</h5>
+
+            {% for comment in comments %}
+            <div class="card mb-3 shadow-sm">
+                <div class="card-header d-flex justify-content-between">
+                    <strong>{{ comment.author_name }}</strong>
+                    <span class="text-muted small">{{ comment.created_at|date:"N j, Y, P" }}</span>
+                </div>
+                <div class="card-body">
+                    <!-- 
+                    XSS vulnerability (intentional).
+                    comment.body is rendered with |safe - this simulates a developer mistake: ouputting unsanitised user input as HTML. 
+                    Phase 0: <script> in the comment executes > alert fires, cookie is visible in the dialog.
+                    Phase 1: <script> still executes, but the browser also sends a violation report to /csp-report/ and logs a warning in the Console tab.
+                    Phase 2+: <script> is BLOCKED by the browser's CSP enforcement. the text "alert(...)" renders but JavaScript does not run. No alert. No cookie leak.
+                    -->
+                    <div class="comment-body">
+                        {{ comment.body|safe }}
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <p class="text-muted">No comments yet. Be the first!</p>
+            {% endfor %}
+        </section>
+
+        <!-- Comment form -->
+        <section id="comment-form" class="mb-5">
+            <h5 class="mb-3">Leave a comment</h5>
+
+            {% if error %}
+            <div class="alert alert-danger">{{ error }}</div>
+            {% endif %}
+
+            <form method="post" action="#comment-form">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label for="author_name" class="form-label fw-bold">Your Name</label>
+                    <input type="text" id="author_name" name="author_name" class="form-control" placeholder="e.g. Ibrahim" required>
+                </div>
+                <div class="mb-3">
+                    <label for="body" class="form-label fw-bold">Comment</label>
+                    <textarea id="body" name="body" class="form-control" rows="4" placeholder="XSS payload here..."></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Post Comment</button>
+                <a href="{% url 'post_list' %}" class="btn btn-outline-secondary ms-2"> Back</a>
+            </form>
+        </section>
+    </div>
+</div>
+{% endblock %}

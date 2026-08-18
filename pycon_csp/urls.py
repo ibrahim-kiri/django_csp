@@ -16,8 +16,10 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from blog.csp_report import csp_report
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path("csp-report/", csp_report, name="csp-report"),
     path("", include("blog.urls")),
 ]
