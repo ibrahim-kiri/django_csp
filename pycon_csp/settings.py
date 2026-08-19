@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
 from pathlib import Path
+from django.utils.csp import CSP # Import CSP constants
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -25,7 +26,7 @@ SECRET_KEY = 'django-insecure-pfe$x#flu1yjps7d2@ktgol6tx)xa_4js6lga_i)3&+y(bkux+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
 
 # Application definition
@@ -37,11 +38,12 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'blog',
+    'blog', # Register the app
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'django.middleware.csp.ContentSecurityPolicyMiddleware', # csp middleware
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -62,6 +64,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'django.template.context_processors.csp', # exposes {{ csp_nonce }} in every template - used in Phase 3
             ],
         },
     },
@@ -126,3 +129,69 @@ MAILERS = {
         'BACKEND': 'django.core.mail.backends.console.EmailBackend',
     },
 }
+
+# Logging - show CSP violation reports in terminal
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {'class': 'logging.StreamHandler'},
+    },
+    'loggers': {
+        'csp': {'handlers': ['console'], 'level': 'WARNING', 'propagate': False},
+    },
+}
+
+# DEMO PHASES
+CSP_PHASE = 3
+
+# PHASE 0: No CSP
+# The ContentSecurityPolicyMiddleware is present but sends no CSP header.
+if CSP_PHASE == 0:
+    pass
+
+# PHASE 1: Report-Only
+# The middleware sends Content-Security-Policy-Report-Only on every response.
+# The browser logs violations but does NOT block anything - safe on live apps.
+elif CSP_PHASE == 1:
+    SECURE_CSP_REPORT_ONLY = {
+        'default-src': [CSP.SELF],
+        'script-src': [CSP.SELF],
+        'style-src': [CSP.SELF],
+        'img-src': [CSP.SELF, 'data:'],
+        'report-uri': ['/csp-report/'], # violations posted here
+    }
+
+# PHASE 2: Enforce
+# SECURE_CSP is Django 6.0's enforcement setting.
+# The middleware sends Content-Security-Policy - browser BLOCKS violations.
+elif CSP_PHASE == 2:
+    SECURE_CSP = {
+        'default-src': [CSP.SELF],
+        'script-src': [CSP.SELF],
+        'style-src': [CSP.SELF, 'https://cdn.jsdelivr.net'], #CDN whitelisted
+        'img-src': [CSP.SELF, 'data:'],
+        'font-src': [CSP.SELF],
+        'connect-src': [CSP.SELF],
+        'frame-ancestors': [CSP.NONE], # prevents clickjacking
+        'base-uri': [CSP.SELF], #prevents base-tag injection
+        'form-action': [CSP.SELF], # locks down form submissions
+    }
+
+# PHASE 3: Nonce
+# CSP.NONCE in script-src tells Django to:
+#   1. Generate a cryptographic random token per request.
+#   2. Insert 'nonce-<token>' into the Content-Security-Policy header.
+#   3. Expose the token as {{ csp_nonce }} via the context processor.
+elif CSP_PHASE == 3:
+    SECURE_CSP = {
+        'default-src': [CSP.SELF],
+        'script-src': [CSP.SELF, CSP.NONCE], # nonce enables {{ csp_nonce }}
+        'style-src': [CSP.SELF, 'https://cdn.jsdelivr.net'],
+        'img-src': [CSP.SELF, 'data:'],
+        'font-src': [CSP.SELF],
+        'connect-src': [CSP.SELF],
+        'frame-ancestors': [CSP.NONE],
+        'base-uri': [CSP.SELF],
+        'form-action': [CSP.SELF],
+    }
